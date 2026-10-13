@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>关于影像地图复杂程度的问卷调查</title>
+<style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 20px; background: #f8f9fa; color: #333; }
+    .container { max-width: 1100px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+    h2, h3 { text-align: center; color: #222; }
+    hr { border: 0; border-top: 1px solid #eee; margin: 20px 0; }
+
+    .stage { display: none; }
+    .active { display: block; }
+
+    .form-group { margin-bottom: 20px; }
+    .form-label { font-weight: bold; margin-bottom: 8px; display: block; font-size: 15px; }
+    .radio-group { display: flex; gap: 15px; flex-wrap: wrap; }
+    .radio-group label { display: flex; align-items: center; gap: 5px; cursor: pointer; background: #f1f3f5; padding: 8px 15px; border-radius: 4px; font-size: 14px; }
+    .text-input { width: 100%; padding: 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+
+    .ready-box { text-align: center; padding: 50px 20px; background: #f1f3f5; border-radius: 8px; margin-top: 20px; }
+    .target-highlight { font-size: 32px; color: red; font-weight: bold; margin: 20px 0; display: block; }
+
+    #map-wrapper { position: relative; border: 1px solid #ccc; display: inline-block; cursor: crosshair; margin-top: 15px; line-height: 0; }
+    #map-image { display: block; max-width: 100%; height: auto; user-select: none; -webkit-user-drag: none; }
+    .instruction-box { background: #fff3cd; color: #856404; padding: 12px; border-radius: 4px; margin-bottom: 15px; font-weight: bold; text-align: center; font-size: 18px; }
+
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; z-index: 1000; }
+    .modal-content { background: white; padding: 30px; border-radius: 8px; width: 600px; box-shadow: 0 4px 20px rgba(0,0,0,0.25); max-height: 90vh; overflow-y: auto; }
+
+    .rating-bar { display: flex; justify-content: space-between; gap: 4px; margin-top: 10px; }
+    .rating-btn { flex: 1; height: 40px; border: 1px solid #ccc; background: #f8f9fa; display: flex; align-items: center; justify-content: center; cursor: pointer; font-weight: bold; border-radius: 4px; transition: all 0.2s; user-select: none; }
+    .rating-btn:hover { background: #e9ecef; }
+    .rating-btn.selected { background: #007bff; color: white; border-color: #0056b3; }
+    .scale-info { display: flex; justify-content: space-between; font-size: 12px; color: #666; margin-top: 5px; }
+
+    .grid-selection { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 15px; }
+    .grid-item { border: 2px solid #ddd; border-radius: 8px; padding: 12px; text-align: center; cursor: pointer; background: #fafafa; transition: all 0.2s; }
+    .grid-item:hover { border-color: #007bff; background: #f0f7ff; }
+    .grid-item img { width: 100%; height: 200px; object-fit: contain; background: #fff; border: 1px solid #eee; border-radius: 4px; }
+    .grid-item label { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; font-size: 16px; font-weight: bold; cursor: pointer; color: #007bff; }
+
+    .btn { display: block; width: 100%; padding: 12px; font-size: 16px; font-weight: bold; color: white; background-color: #007bff; border: none; border-radius: 4px; cursor: pointer; text-align: center; margin-top: 10px; }
+    .btn:hover { background-color: #0056b3; }
+    .btn-success { background-color: #28a745; }
+    .btn-success:hover { background-color: #218838; }
+
+    #result-box { background: #e9ecef; padding: 15px; border-radius: 4px; font-family: monospace; white-space: pre-wrap; word-break: break-all; margin-top: 15px; font-size: 12px; max-height: 300px; overflow-y: auto; }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 阶段 1：基本信息 -->
+    <div id="stage-info" class="stage active">
+        <h2>关于影像地图复杂程度的问卷调查</h2>
+        <p style="color: #666; text-align: center;">请在开始前填写您的基本登记信息</p>
+        <hr>
+        <div class="form-group">
+            <label class="form-label">请输入您的测试编号/唯一ID：</label>
+            <input type="text" id="participant-id" class="text-input" placeholder="例如: USER_01">
+        </div>
+        <div class="form-group">
+            <label class="form-label">您的性别是：</label>
+            <div class="radio-group">
+                <label><input type="radio" name="gender" value="男"> 男</label>
+                <label><input type="radio" name="gender" value="女"> 女</label>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">请问您是否具有地学背景？</label>
+            <div class="radio-group">
+                <label><input type="radio" name="background" value="是"> 是</label>
+                <label><input type="radio" name="background" value="否"> 否</label>
+            </div>
+        </div>
+        <button class="btn" onclick="submitDemographics()">开始实验测试</button>
+    </div>
+
+    <!-- 阶段 2：准备过渡 -->
+    <div id="stage-ready" class="stage">
+        <h2>准备阶段</h2>
+        <div class="ready-box">
+            <p style="font-size: 18px; margin: 0;">区域 <span id="current-region-txt" style="color:red; font-weight:bold;">1</span> / 10 | 图片 <span id="current-img-txt" style="color:blue; font-weight:bold;">1</span> / 11</p>
+            <p style="font-size: 18px; margin: 10px 0;">请准备好寻找的目标是：</p>
+            <span class="target-highlight" id="ready-target-name">目标</span>
+            <button class="btn btn-success" style="width: auto; padding: 12px 50px; margin: 20px auto 0;" onclick="startActualTrial()">开始寻找</button>
+        </div>
+    </div>
+
+    <!-- 阶段 3：地图测试 -->
+    <div id="stage-test" class="stage">
+        <div class="instruction-box" id="task-title">任务加载中...</div>
+        <div style="text-align: center;">
+            <div id="map-wrapper">
+                <img id="map-image" src="" alt="地图加载失败" onclick="handleMapClick(event)">
+            </div>
+        </div>
+    </div>
+
+    <!-- 阶段 4：区域满意度评选 -->
+    <div id="stage-region-satisfaction" class="stage">
+        <p style="text-align: center; font-size: 18px; font-weight: bold; color: #333; margin-top: 10px;">请根据上述提供的地图选出您认为最满意的一个</p>
+        <hr>
+        <div id="satisfaction-grid" class="grid-selection"></div>
+        <button class="btn btn-success" style="margin-top: 30px;" onclick="submitRegionSatisfaction()">提交并进入下一个区域</button>
+    </div>
+
+    <!-- 阶段 5：结束 -->
+    <div id="stage-finish" class="stage">
+        <h2 style="color: #28a745;">全部测试已完成！</h2>
+        <hr>
+        <button class="btn btn-success" onclick="copyResults()">一键复制所有数据到剪贴板</button>
+        <button class="btn" style="background-color: #6c757d;" onclick="downloadCSV()">下载测试数据 (CSV格式)</button>
+        <div id="result-box"></div>
+    </div>
+</div>
+
+<!-- 复杂度评分弹窗 -->
+<div id="complexity-modal" class="modal">
+    <div class="modal-content">
+        <h3 style="margin-top: 0; color: #007bff; text-align: center;">定位成功！请评估：</h3>
+        <hr>
+        <div class="form-group">
+            <label class="form-label" style="text-align: center; font-size: 16px; margin-bottom: 15px;">请您评估一下上面这张影像地图的复杂程度</label>
+            <div class="rating-bar" id="rating-complexity"></div>
+            <div class="scale-info"><span>1</span><span>10</span></div>
+        </div>
+        <button class="btn btn-success" style="margin-top: 25px;" onclick="submitComplexityEvaluation()">确认打分并继续</button>
+    </div>
+</div>
+
+<!-- 算术题弹窗 -->
+<div id="math-modal" class="modal">
+    <div class="modal-content" style="border-top: 5px solid #28a745;">
+        <h3 style="margin-top: 0; color: #28a745; text-align: center;">🧮 注意力小测验</h3>
+        <p style="text-align: center; color: #666; font-size: 14px;">已完成当前区域测试，请计算并选出下列算式的正确答案：</p>
+        <hr>
+        <div class="form-group" style="margin-top: 20px; text-align: center;">
+            <label id="math-question-label" class="form-label" style="font-size: 24px; color: #333; margin-bottom: 20px; font-weight: bold;"></label>
+            <div id="math-options-container" style="display: flex; justify-content: center; gap: 15px; margin-top: 15px;"></div>
+        </div>
+        <button class="btn btn-success" style="margin-top: 25px;" onclick="submitMathCheck()">提交答案并进入选图</button>
+    </div>
+</div>
+
+<script>
+    const brightnessLevels = ["0%","10%","20%","30%","40%","50%","60%","70%","80%","90%","100%"];
+
+    // 矩形尺寸：点击点 = 左上角，向右下 +RECT_W / +RECT_H
+    const RECT_W = 4.0;
+    const RECT_H = 4.0;
+
+    // ============================================================
+    // 坐标配置（已采集完成）
+    // ============================================================
+    const COORDINATES = {
+      "00": [
+        { minX:50.4, minY:30.12 },
+        { minX:21.09, minY:52.4 },
+        { minX:67.05, minY:71.74 },
+        { minX:37.02, minY:75.38 },
+        { minX:64.51, minY:15.12 },
+        { minX:28.19, minY:34.46 },
+        { minX:53.46, minY:78.95 },
+        { minX:25.79, minY:47.56 },
+        { minX:73.94, minY:60.73 },
+        { minX:17.6, minY:20.23 },
+        { minX:23.33, minY:73.91 },
+      ],
+      "01": [
+        { minX:41.81, minY:13.49 },
+        { minX:52, minY:87.58 },
+        { minX:66.2, minY:43.18 },
+        { minX:21.51, minY:42.76 },
+        { minX:80.04, minY:21.76 },
+        { minX:35.26, minY:75.82 },
+        { minX:92.51, minY:55.37 },
+        { minX:41.44, minY:35.76 },
+        { minX:65.66, minY:84.36 },
+        { minX:80.04, minY:13.59 },
+        { minX:28.98, minY:37.53 },
+      ],
+      "02": [
+        { minX:36.8, minY:51.54 },
+        { minX:79.76, minY:25.35 },
+        { minX:56.1, minY:77.03 },
+        { minX:21.6, minY:14.15 },
+        { minX:43.72, minY:39.78 },
+        { minX:14.96, minY:76.61 },
+        { minX:67.29, minY:55.46 },
+        { minX:49.91, minY:17.09 },
+        { minX:85.5, minY:70.73 },
+        { minX:23.51, minY:35.01 },
+        { minX:61.65, minY:48.32 },
+      ],
+      "03": [
+        { minX:40.81, minY:42.3 },
+        { minX:19.6, minY:61.34 },
+        { minX:70.66, minY:21.99 },
+        { minX:56.55, minY:80.11 },
+        { minX:15.59, minY:23.72 },
+        { minX:74.67, minY:58.87 },
+        { minX:36.17, minY:49.07 },
+        { minX:36.26, minY:85.48 },
+        { minX:82.77, minY:44.16 },
+        { minX:20.87, minY:42.06 },
+        { minX:46.36, minY:70.21 },
+      ],
+      "04": [
+        { minX:28.7, minY:32.7 },
+        { minX:68.75, minY:26.82 },
+        { minX:39.81, minY:51.48 },
+        { minX:19.42, minY:41.95 },
+        { minX:52.28, minY:77.55 },
+        { minX:79.86, minY:41.95 },
+        { minX:33.44, minY:60.45 },
+        { minX:25.06, minY:11.4 },
+        { minX:13.41, minY:38.03 },
+        { minX:62.38, minY:68.86 },
+        { minX:78.76, minY:13.92 },
+      ],
+      "05": [
+        { minX:37.62, minY:27.66 },
+        { minX:75.4, minY:61.29 },
+        { minX:28.88, minY:70.82 },
+        { minX:48.73, minY:22.33 },
+        { minX:82.95, minY:76.99 },
+        { minX:8.13, minY:32.7 },
+        { minX:64.47, minY:69.7 },
+        { minX:66.02, minY:20.09 },
+        { minX:32.89, minY:51.48 },
+        { minX:58.56, minY:23.31 },
+        { minX:19.69, minY:64.38 },
+      ],
+      "06": [
+        { minX:40.72, minY:45.04 },
+        { minX:67.39, minY:61.57 },
+        { minX:7.59, minY:59.05 },
+        { minX:53.46, minY:24.85 },
+        { minX:23.42, minY:54.71 },
+        { minX:84.04, minY:47 },
+        { minX:20.69, minY:22.05 },
+        { minX:30.16, minY:74.75 },
+        { minX:57.65, minY:47 },
+        { minX:29.61, minY:28.78 },
+        { minX:57.1, minY:65.22 },
+      ],
+      "07": [
+        { minX:58.01, minY:66.34 },
+        { minX:14.05, minY:57.79 },
+        { minX:49.27, minY:80.91 },
+        { minX:61.11, minY:28.36 },
+        { minX:31.98, minY:67.32 },
+        { minX:48.54, minY:20.37 },
+        { minX:19.6, minY:69.42 },
+        { minX:80.86, minY:60.59 },
+        { minX:44.36, minY:34.1 },
+        { minX:33.25, minY:85.93 },
+        { minX:62.29, minY:38.41 },
+      ],
+      "08": [
+        { minX:77.13, minY:54.95 },
+        { minX:27.7, minY:67.41 },
+        { minX:53.64, minY:16.43 },
+        { minX:46.82, minY:71.61 },
+        { minX:28.34, minY:87.02 },
+        { minX:59.47, minY:16.71 },
+        { minX:17.05, minY:47.9 },
+        { minX:64.38, minY:69.19 },
+        { minX:77.58, minY:20.87 },
+        { minX:34.52, minY:54.91 },
+        { minX:62.56, minY:11.91 },
+      ],
+      "09": [
+        { minX:23.87, minY:19.35 },
+        { minX:46.18, minY:64.9 },
+        { minX:61.47, minY:88.03 },
+        { minX:60.83, minY:40.93 },
+        { minX:20.96, minY:41.35 },
+        { minX:12.59, minY:84.25 },
+        { minX:49.27, minY:38.69 },
+        { minX:27.79, minY:51.02 },
+        { minX:62.56, minY:66.02 },
+        { minX:27.7, minY:75.13 },
+        { minX:32.79, minY:17.66 },
+      ],
+    };
+
+    const TARGET_TEXTS = {
+      "00": ["友誼","嘉年","旭照","甘棠","香港","文武","發利","永休","中廈","欣翠","蔚然"],
+      "01": ["九綱","方幼","瑪利","劍鳴","賽馬","明苑","碧一","京斯","福怡","何明","雅花"],
+      "02": ["元和","忠孝","昌發","喜二","青三","基福","日輝","安發","美B","元商","永順"],
+      "03": ["明珠","荔枝","福年","永昌","西九","長沙","建和","萬安","福星","大德","基六"],
+      "04": ["省善","新五","漫春","四六","基九","牛四","哥朗","陶庭","又花","九主","天保"],
+      "05": ["昌喜","西洋","福工","維景","友誠","福和","振宜","東海","日昇","愛都","洋松"],
+      "06": ["好望","華新","廣興","宏景","順明","明威","朗豪","美昌","裕旺","雅蘭","鴻輝"],
+      "07": ["立信","七足","百利","木的","置域","高信","嘉成","九木","金威","突破","高基"],
+      "08": ["溫莎","太子","加拿","金域","彩星","宏生","海利","維港","中保","海防","豪華"],
+      "09": ["新安","鴻利","翠六","昌隆","御悅","中旅","東禧","建三","仁孚","明愛","時盛"],
+    };
+    // ============================================================
+
+    function buildRegionsConfig() {
+        let regionsConfig = [];
+        for (let r = 0; r < 10; r++) {
+            const regionFolderNum = r < 10 ? `0${r}` : `${r}`;
+            const regionImages = brightnessLevels.map((lvl, i) => {
+                const c = COORDINATES[regionFolderNum][i];
+                const txt = TARGET_TEXTS[regionFolderNum][i];
+                return {
+                    path: `${regionFolderNum} png/Brightness_Output/${regionFolderNum}_${lvl}_IM.png`,
+                    level: lvl,
+                    minX: c.minX, minY: c.minY,
+                    maxX: c.minX + RECT_W, maxY: c.minY + RECT_H,
+                    targetText: txt
+                };
+            });
+            regionsConfig.push({ regionId: regionFolderNum, images: regionImages });
+        }
+        return regionsConfig;
+    }
+
+    let regionsConfig = buildRegionsConfig();
+
+    let participant = {};
+    let currentRegionIndex = 0;
+    let currentImageIndex = 0;
+    let trialStartTime = 0;
+    let clickCount = 0;
+    let allResults = [];
+    let regionBestChoices = {};
+    let currentComplexityRating = null;
+    let currentTrialTempData = {};
+
+    const mathQuestionBank = [
+        { q: "3 + 5 = ?", ans: 8, options: [6, 8, 9, 12] },
+        { q: "9 - 4 = ?", ans: 5, options: [3, 4, 5, 6] },
+        { q: "2 × 3 = ?", ans: 6, options: [5, 6, 8, 9] },
+        { q: "8 ÷ 2 = ?", ans: 4, options: [2, 3, 4, 6] },
+        { q: "7 + 2 = ?", ans: 9, options: [7, 8, 9, 10] },
+        { q: "6 - 3 = ?", ans: 3, options: [2, 3, 4, 5] },
+        { q: "4 × 2 = ?", ans: 8, options: [6, 7, 8, 10] },
+        { q: "9 - 5 = ?", ans: 4, options: [3, 4, 5, 7] },
+        { q: "3 + 4 = ?", ans: 7, options: [6, 7, 8, 9] },
+        { q: "5 + 5 = ?", ans: 10, options: [8, 9, 10, 11] }
+    ];
+    let currentMathObj = null;
+
+    window.onload = function() { renderRatingBar(); };
+
+    function renderRatingBar() {
+        const container = document.getElementById('rating-complexity');
+        container.innerHTML = '';
+        for (let i = 1; i <= 10; i++) {
+            const btn = document.createElement('div');
+            btn.className = 'rating-btn';
+            btn.innerText = i;
+            btn.onclick = function() {
+                document.querySelectorAll('#rating-complexity .rating-btn').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                currentComplexityRating = i;
+            };
+            container.appendChild(btn);
+        }
+    }
+
+    function submitDemographics() {
+        const id = document.getElementById("participant-id").value.trim();
+        const gender = document.querySelector('input[name="gender"]:checked')?.value;
+        const background = document.querySelector('input[name="background"]:checked')?.value;
+
+        if (!id) { alert("请输入您的测试编号/唯一ID！"); return; }
+        if (!gender || !background) { alert("请完整勾选基本登记信息！"); return; }
+
+        participant = { id, gender, background };
+        showReadyStage();
+    }
+
+    function showReadyStage() {
+        document.getElementById("stage-info").classList.remove("active");
+        document.getElementById("stage-test").classList.remove("active");
+        document.getElementById("stage-region-satisfaction").classList.remove("active");
+        document.getElementById("stage-ready").classList.add("active");
+
+        document.getElementById("current-region-txt").innerText = currentRegionIndex + 1;
+        document.getElementById("current-img-txt").innerText = currentImageIndex + 1;
+
+        const imgObj = regionsConfig[currentRegionIndex].images[currentImageIndex];
+        document.getElementById("ready-target-name").innerText = imgObj.targetText;
+    }
+
+    function startActualTrial() {
+        document.getElementById("stage-ready").classList.remove("active");
+        document.getElementById("stage-test").classList.add("active");
+
+        const imgObj = regionsConfig[currentRegionIndex].images[currentImageIndex];
+        document.getElementById("task-title").innerText =
+            `区域 ${currentRegionIndex + 1} / 10 | 图片 ${currentImageIndex + 1} / 11 — 寻找目标：【${imgObj.targetText}】`;
+
+        const mapImg = document.getElementById("map-image");
+        mapImg.src = imgObj.path;
+        clickCount = 0;
+        mapImg.onload = function() { trialStartTime = performance.now(); };
+    }
+
+    function handleMapClick(event) {
+        const rect = event.target.getBoundingClientRect();
+        const clickX = ((event.clientX - rect.left) / rect.width) * 100;
+        const clickY = ((event.clientY - rect.top) / rect.height) * 100;
+
+        clickCount++;
+
+        const imgObj = regionsConfig[currentRegionIndex].images[currentImageIndex];
+        if (clickX >= imgObj.minX && clickX <= imgObj.maxX &&
+            clickY >= imgObj.minY && clickY <= imgObj.maxY) {
+            const timeSpent = ((performance.now() - trialStartTime) / 1000).toFixed(2);
+            currentTrialTempData = {
+                regionId: regionsConfig[currentRegionIndex].regionId,
+                imageName: imgObj.path,
+                targetText: imgObj.targetText,
+                level: imgObj.level,
+                timeSpent, clicks: clickCount
+            };
+            openComplexityModal();
+        }
+    }
+
+    function openComplexityModal() {
+        currentComplexityRating = null;
+        document.querySelectorAll('#rating-complexity .rating-btn').forEach(b => b.classList.remove('selected'));
+        document.getElementById("complexity-modal").style.display = "flex";
+    }
+
+    function submitComplexityEvaluation() {
+        if (!currentComplexityRating) { alert("请对该地图的复杂程度进行 1-10 的评分！"); return; }
+        allResults.push({ ...currentTrialTempData, complexity: currentComplexityRating });
+        document.getElementById("complexity-modal").style.display = "none";
+        currentImageIndex++;
+        if (currentImageIndex < 11) showReadyStage();
+        else openMathModal();
+    }
+
+    function openMathModal() {
+        currentMathObj = mathQuestionBank[currentRegionIndex];
+        document.getElementById("math-question-label").innerText = currentMathObj.q;
+        const optContainer = document.getElementById("math-options-container");
+        optContainer.innerHTML = "";
+        currentMathObj.options.forEach(opt => {
+            const label = document.createElement("label");
+            label.style.cssText = "display: flex; align-items: center; justify-content: center; gap: 5px; background: #f8f9fa; padding: 10px 20px; border-radius: 4px; cursor: pointer; border: 1px solid #ccc; font-weight: bold; font-size: 18px;";
+            label.innerHTML = `<input type="radio" name="math-ans" value="${opt}"> ${opt}`;
+            optContainer.appendChild(label);
+        });
+        document.getElementById("math-modal").style.display = "flex";
+    }
+
+    function submitMathCheck() {
+        const selectedOpt = document.querySelector('input[name="math-ans"]:checked');
+        if (!selectedOpt) { alert("请选择一个计算结果！"); return; }
+        const userAnswer = Number(selectedOpt.value);
+        allResults[allResults.length - 1].mathCheck = (userAnswer === currentMathObj.ans) ? "正确" : `错误(选了${userAnswer})`;
+        document.getElementById("math-modal").style.display = "none";
+        showRegionSatisfactionStage();
+    }
+
+    function showRegionSatisfactionStage() {
+        document.getElementById("stage-test").classList.remove("active");
+        document.getElementById("stage-region-satisfaction").classList.add("active");
+        const gridContainer = document.getElementById("satisfaction-grid");
+        gridContainer.innerHTML = "";
+        regionsConfig[currentRegionIndex].images.forEach((imgObj, idx) => {
+            const item = document.createElement("div");
+            item.className = "grid-item";
+            item.innerHTML = `
+                <img src="${imgObj.path}" alt="地图全貌">
+                <label><input type="radio" name="best-map" value="${idx}"> ${idx}</label>
+            `;
+            gridContainer.appendChild(item);
+        });
+    }
+
+    function submitRegionSatisfaction() {
+        const selectedRadio = document.querySelector('input[name="best-map"]:checked');
+        if (!selectedRadio) { alert("请在这11张地图中选出您认为最满意的一个！"); return; }
+        regionBestChoices[regionsConfig[currentRegionIndex].regionId] = Number(selectedRadio.value);
+        currentImageIndex = 0;
+        currentRegionIndex++;
+        if (currentRegionIndex < regionsConfig.length) showReadyStage();
+        else showFinishStage();
+    }
+
+    function showFinishStage() {
+        document.getElementById("stage-region-satisfaction").classList.remove("active");
+        document.getElementById("stage-finish").classList.add("active");
+        showFinalResultsText();
+    }
+
+    function showFinalResultsText() {
+        let text = `=== 参与者编号: ${participant.id} | 性别: ${participant.gender} | 地学背景: ${participant.background} ===\n\n`;
+        text += `【各区域最满意地图选择结果 (序号 0-10)】\n`;
+        for (let regId in regionBestChoices) text += `区域 ${regId}: 最满意序号 = ${regionBestChoices[regId]}\n`;
+        text += `\n--------------------------------------------------------\n`;
+        text += `区域ID\t亮度\t目标文字\t用时(s)\t点击次数\t复杂度评分\t算术质控\n`;
+        allResults.forEach(r => {
+            text += `${r.regionId}\t${r.level}\t${r.targetText}\t${r.timeSpent}\t${r.clicks}\t${r.complexity}\t${r.mathCheck || "-"}\n`;
+        });
+        document.getElementById("result-box").innerText = text;
+    }
+
+    function copyResults() {
+        navigator.clipboard.writeText(document.getElementById("result-box").innerText)
+            .then(() => alert("所有数据已成功复制到剪贴板！"));
+    }
+
+    function downloadCSV() {
+        let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+        csvContent += "参与者ID,性别,地学背景,区域ID,亮度,目标文字,寻找时间(秒),点击次数,复杂度评分,算术检验\n";
+        allResults.forEach(r => {
+            csvContent += `"${participant.id}","${participant.gender}","${participant.background}","${r.regionId}","${r.level}","${r.targetText}",${r.timeSpent},${r.clicks},${r.complexity},"${r.mathCheck || "-"}"\n`;
+        });
+        csvContent += `\n--- 各区域最满意序号 (0-10) ---\n`;
+        for (let regId in regionBestChoices) csvContent += `区域 ${regId},${regionBestChoices[regId]}\n`;
+
+        const link = document.createElement("a");
+        link.setAttribute("href", encodeURI(csvContent));
+        link.setAttribute("download", `地图测试结果_${participant.id}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+</script>
+</body>
+</html>
